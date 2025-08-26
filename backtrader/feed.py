@@ -26,6 +26,7 @@ import datetime
 import inspect
 import io
 import os.path
+import gzip
 
 import backtrader as bt
 from backtrader import (date2num, num2date, time2num, TimeFrame, dataseries,
@@ -672,7 +673,10 @@ class CSVDataBase(with_metaclass(MetaCSVDataBase, DataBase)):
                 self.f = self.p.dataname
             else:
                 # Let an exception propagate to let the caller know
-                self.f = io.open(self.p.dataname, 'r')
+                if self.p.dataname.endswith(".gz"):
+                    self.f = gzip.open(self.p.dataname, 'rb')
+                else:
+                    self.f = io.open(self.p.dataname, 'r')
 
         if self.p.headers:
             self.f.readline()  # skip the headers
@@ -702,6 +706,8 @@ class CSVDataBase(with_metaclass(MetaCSVDataBase, DataBase)):
 
         # Let an exception propagate to let the caller know
         line = self.f.readline()
+        if isinstance(line, bytes):
+            line = line.decode('utf-8')
 
         if not line:
             return False
