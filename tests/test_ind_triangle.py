@@ -20,8 +20,9 @@ class TestTriangle(unittest.TestCase):
         """
         Create a backtrader data feed from list of (time, high, low) tuples
         """
+        df = self._create_dataframe(bars_data)
         data_feed = bt.feeds.PandasData(
-            dataname=self._create_dataframe(bars_data),
+            dataname=df,
             timeframe=bt.TimeFrame.Days,
         )
         return data_feed
@@ -40,7 +41,6 @@ class TestTriangle(unittest.TestCase):
             volume = 1000
             
             df_data.append({
-                'datetime': pd.Timestamp(f'2023-01-{i+1:02d}'),
                 'open': open_price,
                 'high': high,
                 'low': low, 
@@ -49,23 +49,37 @@ class TestTriangle(unittest.TestCase):
             })
         
         # Pad with additional bars to meet minimum period requirements
-        last_bar = bars_data[-1] if bars_data else (1, 100.0, 99.0)
-        _, last_high, last_low = last_bar
+        # Create varied padding bars that won't form triangle patterns
+        padding_needed = max(0, 25 - len(bars_data))
+        padding_bars = []
         
-        for i in range(len(bars_data), 25):  # Ensure at least 25 bars
-            # Create variations around the last bar
-            open_price = (last_high + last_low) / 2
-            close_price = open_price
-            
-            df_data.append({
-                'datetime': pd.Timestamp(f'2023-01-{i+1:02d}'),
+        for i in range(padding_needed):
+            # Create varied bars that won't form triangles
+            # Use a sawtooth pattern that breaks triangle conditions
+            base_price = 80.0
+            if i % 4 == 0:
+                high, low = 82.0, 78.0
+            elif i % 4 == 1:
+                high, low = 84.0, 80.0  
+            elif i % 4 == 2:
+                high, low = 81.0, 77.0
+            else:
+                high, low = 85.0, 81.0
+                
+            open_price = (high + low) / 2
+            padding_bars.append({
                 'open': open_price,
-                'high': last_high,
-                'low': last_low, 
-                'close': close_price,
+                'high': high,
+                'low': low,
+                'close': open_price,
                 'volume': 1000
             })
         
+        df_data = padding_bars + df_data
+
+        for i, data in enumerate(df_data):
+            data['datetime'] = pd.Timestamp(f'2023-01-{i + 1:02d}')
+
         df = pd.DataFrame(df_data)
         df.set_index('datetime', inplace=True)
         return df
@@ -105,21 +119,14 @@ class TestTriangle(unittest.TestCase):
                 })
         
         cerebro.addstrategy(TestStrategy)
-        results = cerebro.run()
-        strategy = results[0]
+        strategy = cerebro.run()[0]
         
         # Check if any result matches the expected score
         if strategy.results:
-            for result in strategy.results:
-                actual_score = int(result['score'])
-                if actual_score == expected_score:
-                    print(f"Expected score: {expected_score}, Actual score: {actual_score}")
-                    return True
-            
-            # Print all scores for debugging
-            all_scores = [int(r['score']) for r in strategy.results]
-            print(f"Expected score: {expected_score}, All actual scores: {all_scores}")
-            return expected_score == 0 and all(s == 0 for s in all_scores)
+            # print(f"all scores: {[r['score'] for r in strategy.results]}")
+            last_score = int(strategy.results[-1]['score'])
+            # print(f"Expected score: {expected_score}, Actual last score: {last_score}")
+            return last_score == expected_score
         
         return expected_score == 0
     
@@ -162,6 +169,7 @@ class TestTriangle(unittest.TestCase):
         Test case from Java: testBadDownTriangle
         This should not form a valid triangle
         """
+
         bars_data = [
             (1, 97.97, 95.34),
             (2, 98.21, 95.73),  # Higher high breaks down triangle pattern

@@ -66,12 +66,10 @@ class Triangle(Indicator):
         super(Triangle, self).__init__()
         # Set minimum period
         self.addminperiod(max(self.p.range, self.p.lookback))
+        
+        # Set plotmaster to display underlying data as candlesticks
+        self.plotinfo.plotmaster = self.data
     
-    def prenext(self):
-        # During prenext phase, set default values
-        self.lines.score[0] = 0.0
-        self.lines.up[0] = float('nan')
-        self.lines.down[0] = float('nan')
     
     def _get_triangle_score(self, bars, flip=False):
         """

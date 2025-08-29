@@ -14,6 +14,7 @@ from __future__ import (absolute_import, division, print_function,
 
 import argparse
 import sys
+import math
 import backtrader as bt
 
 
@@ -79,7 +80,7 @@ class TriangleStrategy(bt.Strategy):
         if score != 0:
             self.triangle_count += 1
             
-            if score > 0 and not bt.isnan(up_signal):
+            if score > 0 and not math.isnan(up_signal):
                 self.up_triangles += 1
                 self.log(f'UP TRIANGLE detected! Score: {score:.0f}, Level: {up_signal:.2f}')
                 
@@ -88,7 +89,7 @@ class TriangleStrategy(bt.Strategy):
                     self.log(f'BUY CREATE, {self.data.close[0]:.2f}')
                     self.order = self.buy()
                     
-            elif score < 0 and not bt.isnan(down_signal):
+            elif score < 0 and not math.isnan(down_signal):
                 self.down_triangles += 1
                 self.log(f'DOWN TRIANGLE detected! Score: {score:.0f}, Level: {down_signal:.2f}')
                 
