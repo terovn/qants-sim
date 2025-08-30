@@ -25,14 +25,19 @@ import collections
 from datetime import date, datetime
 import io
 import itertools
+import yfinance as yf
 
-from ..utils.py3 import (urlopen, urlquote, ProxyHandler, build_opener,
-                         install_opener)
-
+from . import GenericCSVData
 import backtrader as bt
 from .. import feed
 from ..utils import date2num
 
+DATE_FORMAT = '%Y-%m-%d'
+INTERVALS = {
+        bt.TimeFrame.Days: '1d',
+        bt.TimeFrame.Weeks: '1wk',
+        bt.TimeFrame.Months: '1mo',
+    }
 
 class YahooFinanceCSVData(feed.CSVDataBase):
     '''
@@ -91,6 +96,7 @@ class YahooFinanceCSVData(feed.CSVDataBase):
     )
 
     def start(self):
+
         super(YahooFinanceCSVData, self).start()
 
         if not self.params.reverse:
@@ -98,6 +104,7 @@ class YahooFinanceCSVData(feed.CSVDataBase):
 
         # Yahoo sends data in reverse order and the file is still unreversed
         dq = collections.deque()
+
         for line in self.f:
             dq.appendleft(line)
 
@@ -193,7 +200,7 @@ class YahooFinanceCSV(feed.CSVFeedBase):
     DataCls = YahooFinanceCSVData
 
 
-class YahooFinanceData(YahooFinanceCSVData):
+class YahooFinanceData(GenericCSVData):
     '''
     Executes a direct download of data from Yahoo servers for the given time
     range.
@@ -242,115 +249,35 @@ class YahooFinanceData(YahooFinanceCSVData):
       '''
 
     params = (
-        ('proxies', {}),
-        ('period', 'd'),
-        ('reverse', False),
-        ('urlhist', 'https://finance.yahoo.com/quote/{}/history'),
-        ('urldown', 'https://query1.finance.yahoo.com/v7/finance/download'),
-        ('retries', 3),
+        ('nullvalue', float('NaN')),
+        ('dtformat', '%Y-%m-%d %H:%M:%S%z'),
+
+        ('datetime', 0),
+        ('time', -1),
+        ('open', 1),
+        ('high', 2),
+        ('low', 3),
+        ('close', 4),
+        ('volume', 5),
+        ('openinterest', -1),
     )
 
-    def start_v7(self):
-        try:
-            import requests
-        except ImportError:
-            msg = ('The new Yahoo data feed requires to have the requests '
-                   'module installed. Please use pip install requests or '
-                   'the method of your choice')
-            raise Exception(msg)
+    def start_yf(self):
+        ticker = yf.Ticker(self.p.dataname)
+        df = ticker.history(
+            start=self.p.fromdate.strftime(DATE_FORMAT),
+            end=self.p.todate.strftime(DATE_FORMAT),
+            interval=INTERVALS[self.p.timeframe]
+        )
+        print(df)
 
-        self.error = None
-        url = self.p.urlhist.format(self.p.dataname)
-
-        sesskwargs = dict()
-        if self.p.proxies:
-            sesskwargs['proxies'] = self.p.proxies
-
-        crumb = None
-        sess = requests.Session()
-        sess.headers['User-Agent'] = 'backtrader'
-        for i in range(self.p.retries + 1):  # at least once
-            resp = sess.get(url, **sesskwargs)
-            if resp.status_code != requests.codes.ok:
-                continue
-
-            txt = resp.text
-            i = txt.find('CrumbStore')
-            if i == -1:
-                continue
-            i = txt.find('crumb', i)
-            if i == -1:
-                continue
-            istart = txt.find('"', i + len('crumb') + 1)
-            if istart == -1:
-                continue
-            istart += 1
-            iend = txt.find('"', istart)
-            if iend == -1:
-                continue
-
-            crumb = txt[istart:iend]
-            crumb = crumb.encode('ascii').decode('unicode-escape')
-            break
-
-        if crumb is None:
-            self.error = 'Crumb not found'
-            self.f = None
-            return
-
-        crumb = urlquote(crumb)
-
-        # urldown/ticker?period1=posix1&period2=posix2&interval=1d&events=history&crumb=crumb
-
-        # Try to download
-        urld = '{}/{}'.format(self.p.urldown, self.p.dataname)
-
-        urlargs = []
-        posix = date(1970, 1, 1)
-        if self.p.todate is not None:
-            period2 = (self.p.todate.date() - posix).total_seconds()
-            urlargs.append('period2={}'.format(int(period2)))
-
-        if self.p.todate is not None:
-            period1 = (self.p.fromdate.date() - posix).total_seconds()
-            urlargs.append('period1={}'.format(int(period1)))
-
-        intervals = {
-            bt.TimeFrame.Days: '1d',
-            bt.TimeFrame.Weeks: '1wk',
-            bt.TimeFrame.Months: '1mo',
-        }
-
-        urlargs.append('interval={}'.format(intervals[self.p.timeframe]))
-        urlargs.append('events=history')
-        urlargs.append('crumb={}'.format(crumb))
-
-        urld = '{}?{}'.format(urld, '&'.join(urlargs))
-        f = None
-        for i in range(self.p.retries + 1):  # at least once
-            resp = sess.get(urld, **sesskwargs)
-            if resp.status_code != requests.codes.ok:
-                continue
-
-            ctype = resp.headers['Content-Type']
-            # Cover as many text types as possible for Yahoo changes
-            if not ctype.startswith('text/'):
-                self.error = 'Wrong content type: %s' % ctype
-                continue  # HTML returned? wrong url?
-
-            # buffer everything from the socket into a local buffer
-            try:
-                # r.encoding = 'UTF-8'
-                f = io.StringIO(resp.text, newline=None)
-            except Exception:
-                continue  # try again if possible
-
-            break
-
-        self.f = f
+        output_buffer = io.StringIO()
+        df.to_csv(output_buffer)
+        output_buffer.seek(0)
+        self.f = output_buffer
 
     def start(self):
-        self.start_v7()
+        self.start_yf()
 
         # Prepared a "path" file -  CSV Parser can take over
         super(YahooFinanceData, self).start()
