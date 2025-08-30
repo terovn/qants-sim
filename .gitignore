@@ -68,5 +68,6 @@ samples2/
 # Ignore test files in Datas
 datas/*.py
 
+.gitignore
 .idea/
 .claude/
