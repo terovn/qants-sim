@@ -269,7 +269,6 @@ class YahooFinanceData(GenericCSVData):
             end=self.p.todate.strftime(DATE_FORMAT),
             interval=INTERVALS[self.p.timeframe]
         )
-        print(df)
 
         output_buffer = io.StringIO()
         df.to_csv(output_buffer)
