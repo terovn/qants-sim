@@ -68,5 +68,11 @@ samples2/
 # Ignore test files in Datas
 datas/*.py
 
+.gitignore
 .idea/
 .claude/
+
+indicators/triangle.py
+indicators/__init__.py
+samples/triangle*
+tests/test_ind_triangle.py
