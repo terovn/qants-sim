@@ -1,11 +1,11 @@
 from .csvgeneric import GenericCSVData
+import backtrader as bt
 
 class QantIBPriceVolData(GenericCSVData):
     params = (
         ('nullvalue', float('NaN')),
-        ('dtformat', '%Y-%m-%d %H:%M:%S%z'),
-        ('tmformat', '%H:%M:%S'),
         ('separator', '\t'),
+        ('reverse', False),
 
         ('datetime', 0),
         ('time', -1),
@@ -17,19 +17,10 @@ class QantIBPriceVolData(GenericCSVData):
         ('openinterest', -1),
     )
 
-class QantIBDailyPriceVolData(GenericCSVData):
-    params = (
-        ('nullvalue', float('NaN')),
-        ('dtformat', '%Y-%m-%d'),
-        ('tmformat', '%H:%M:%S'),
-        ('separator', '\t'),
+    def start(self):
+        if self.p.timeframe >= bt.TimeFrame.Days:
+            self.p.dtformat = '%Y-%m-%d'
+        else:
+            self.p.dtformat = '%Y-%m-%d %H:%M:%S%z'
 
-        ('datetime', 0),
-        ('time', -1),
-        ('open', 1),
-        ('high', 2),
-        ('low', 3),
-        ('close', 4),
-        ('volume', 5),
-        ('openinterest', -1),
-    )
+        super(QantIBPriceVolData, self).start()
