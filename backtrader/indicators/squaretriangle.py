@@ -18,7 +18,7 @@ from . import Indicator
 
 class SquareTriangle(Indicator):
     '''
-    Triangle Pattern Detector
+    Triangle Pattern Detector - based on StudyTriangle2 from qants-trader Java.
     
     Detects triangle consolidation patterns in price data by analyzing
     the overlap between actual price action and a perfect triangle shape.
@@ -27,7 +27,7 @@ class SquareTriangle(Indicator):
     Down Triangle: Flat lows with progressively lower highs
     
     Parameters:
-    - max_extra_area_ratio: Maximum allowed ratio of non-overlapping area
+    - max_area_diff_ratio: Maximum allowed ratio of non-overlapping area
     - min_range: Minimum bars needed for valid triangle (default 3)
     - flat_pct: Maximum percentage difference for flat tops/bottoms, 1 means 1%
     
@@ -42,7 +42,7 @@ class SquareTriangle(Indicator):
     lines = ('score', 'up', 'down')
     
     params = (
-        ('max_extra_area_ratio', 0.2),      # max allowed ratio of non-overlapping area
+        ('max_area_diff_ratio', 0.2),      # max allowed ratio of non-overlapping area
         ('min_range', 3),     # minimum bars for valid triangle
         ('flat_pct', 0.4),    # max percentage difference for flat tops/bottoms, 1 means 1%
     )
@@ -80,7 +80,7 @@ class SquareTriangle(Indicator):
             flip: If True, analyze as down triangle (flip high/low)
             
         Returns:
-            dict with keys: direction, length, entry_price, ex_pct
+            dict with keys: direction, length, ex_pct
         """
         if len(bars) < self.p.min_range:
             return None
@@ -118,7 +118,6 @@ class SquareTriangle(Indicator):
         result = {
             'direction': 'short' if flip else 'long',
             'length': 0,
-            'entry_price': float('-inf') if not flip else float('inf'),
             'ex_pct': 0
         }
         
@@ -189,22 +188,13 @@ class SquareTriangle(Indicator):
                 area_total += thres
                 
                 # Check if deviation exceeds threshold
-                if area_total > 0 and ex_total / area_total > self.p.max_extra_area_ratio:
+                if area_total > 0 and ex_total / area_total > self.p.max_area_diff_ratio:
                     break
                 
                 # Update result
                 result['ex_pct'] = ex_total / area_total if area_total > 0 else 0
-                if flip:
-                    # For flipped data, we want the minimum (which corresponds to max in original)
-                    result['entry_price'] = min(result['entry_price'], bi_high)
-                else:
-                    result['entry_price'] = max(result['entry_price'], bi_high)
                 result['length'] += 1
-        
-        # Fix entry price for flipped data
-        if flip and result['length'] >= test_range:
-            result['entry_price'] = -result['entry_price']
-        
+
         return result if result['length'] >= test_range else None
     
     def next(self):
@@ -248,9 +238,9 @@ class SquareTriangle(Indicator):
                     # Score is negative for down triangles, positive for up triangles
                     if triangle['direction'] == 'short':
                         score = -float(triangle['length'])
-                        self.lines.down[0] = float(bars[-1]['low'])
+                        self.lines.down[0] = min([b['low'] for b in bars])
                     else:
                         score = float(triangle['length'])
-                        self.lines.up[0] = float(bars[-1]['high'])
+                        self.lines.up[0] = max([b['high'] for b in bars])
                         
                     self.lines.score[0] = score
