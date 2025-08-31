@@ -10,7 +10,7 @@ from __future__ import (absolute_import, division, print_function,
 
 import unittest
 import backtrader as bt
-from backtrader.indicators import Triangle
+from backtrader.indicators import SquareTriangle
 import math
 
 
@@ -98,7 +98,7 @@ class TestTriangle(unittest.TestCase):
         class TestStrategy(bt.Strategy):
             def __init__(self):
                 # Use smaller parameters suitable for test data
-                self.triangle = Triangle(
+                self.triangle = SquareTriangle(
                     self.data,
                     range=3,
                     lookback=5,  # Smaller lookback for test
@@ -199,9 +199,9 @@ class TestTriangle(unittest.TestCase):
         class TestStrategy(bt.Strategy):
             def __init__(self):
                 # Test with different thresholds
-                self.triangle1 = Triangle(self.data, thresh=0.1)
-                self.triangle2 = Triangle(self.data, thresh=0.3)
-                self.triangle3 = Triangle(self.data, flat_pct=0.1)
+                self.triangle1 = SquareTriangle(self.data, thresh=0.1)
+                self.triangle2 = SquareTriangle(self.data, thresh=0.3)
+                self.triangle3 = SquareTriangle(self.data, flat_pct=0.1)
                 
         cerebro.addstrategy(TestStrategy)
         results = cerebro.run()

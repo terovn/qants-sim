@@ -14,10 +14,9 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 from . import Indicator
-import math
 
 
-class Triangle(Indicator):
+class SquareTriangle(Indicator):
     '''
     Triangle Pattern Detector
     
@@ -28,10 +27,9 @@ class Triangle(Indicator):
     Down Triangle: Flat lows with progressively lower highs
     
     Parameters:
-    - thresh: Maximum allowed ratio of non-overlapping area (default 0.2)
-    - range: Minimum bars needed for valid triangle (default 3)  
-    - flat_pct: Maximum percentage difference for flat tops/bottoms (default 0.2)
-    - lookback: Number of bars to analyze (default 20)
+    - max_extra_area_ratio: Maximum allowed ratio of non-overlapping area
+    - min_range: Minimum bars needed for valid triangle (default 3)
+    - flat_pct: Maximum percentage difference for flat tops/bottoms, 1 means 1%
     
     Outputs:
     - score: Triangle strength/length (positive for up triangles, negative for down triangles, 0 if none)
@@ -39,15 +37,14 @@ class Triangle(Indicator):
     - down: Price level where down triangle detected (NaN otherwise)
     '''
     
-    alias = ('LongTri', 'Triangle2', 'LongTriangle2')
+    alias = ('Triangle',)
     
     lines = ('score', 'up', 'down')
     
     params = (
-        ('thresh', 0.2),      # max allowed ratio of non-overlapping area
-        ('range', 3),         # minimum bars for valid triangle
-        ('flat_pct', 0.3),    # max pct difference for flat tops/bottoms
-        ('lookback', 20),     # number of bars to look back
+        ('max_extra_area_ratio', 0.2),      # max allowed ratio of non-overlapping area
+        ('min_range', 3),     # minimum bars for valid triangle
+        ('flat_pct', 0.4),    # max percentage difference for flat tops/bottoms, 1 means 1%
     )
     
     plotinfo = dict(
@@ -64,9 +61,9 @@ class Triangle(Indicator):
     )
     
     def __init__(self):
-        super(Triangle, self).__init__()
+        super(SquareTriangle, self).__init__()
         # Set minimum period - only need 'range' bars for triangle detection
-        self.addminperiod(self.p.range)
+        self.addminperiod(self.p.min_range)
         
         # Set plotmaster to display underlying data as candlesticks
         self.plotinfo.plotmaster = self.data
@@ -85,13 +82,13 @@ class Triangle(Indicator):
         Returns:
             dict with keys: direction, length, entry_price, ex_pct
         """
-        if len(bars) < self.p.range:
+        if len(bars) < self.p.min_range:
             return None
         
         best_result = None
         
         # Test progressively longer ranges, starting from minimum range
-        for test_range in range(self.p.range, len(bars) + 1):
+        for test_range in range(self.p.min_range, len(bars) + 1):
             result = self._test_triangle_range(bars, test_range, flip)
             
             # If this range produces a valid triangle, keep it as best
@@ -147,7 +144,7 @@ class Triangle(Indicator):
         
         # Up triangle: flat highs + higher lows
         # Down triangle: flat lows + lower highs (after flip)
-        if (flat_diff_pct <= self.p.flat_pct and 
+        if (flat_diff_pct <= self.p.flat_pct and
             low_end > low_start and 
             low_end < high_start):
             
@@ -192,7 +189,7 @@ class Triangle(Indicator):
                 area_total += thres
                 
                 # Check if deviation exceeds threshold
-                if area_total > 0 and ex_total / area_total > self.p.thresh:
+                if area_total > 0 and ex_total / area_total > self.p.max_extra_area_ratio:
                     break
                 
                 # Update result
@@ -212,29 +209,22 @@ class Triangle(Indicator):
     
     def next(self):
         # Need enough data - only require range bars for triangle detection
-        if len(self) < self.p.range:
+        if len(self) < self.p.min_range:
             return
             
         # Initialize outputs
         self.lines.score[0] = 0.0
         self.lines.up[0] = float('nan')
         self.lines.down[0] = float('nan')
-        
-        # Debug: print current bar info
-        #current_date = self.data.datetime.date(0)
-        #if current_date.year == 2025 and current_date.month == 7:
-        #    print(f"DEBUG {current_date}: len={len(self)}, minperiod={max(self.p.range, self.p.lookback)}, analyzing={len(self) >= max(self.p.range, self.p.lookback)}")
-            
+
         # Look for triangles that end at the current bar (triangle completion detection)
         # This ensures each triangle pattern is detected exactly once - on the completion day
         idx = len(self) - 1  # Look at pattern ending at current bar
         
-        if idx >= self.p.range - 1:
+        if idx >= self.p.min_range - 1:
             # Get bars for this analysis window
             bars = []
-            # Create larger window to allow progressive testing
-            max_lookback = min(self.p.lookback, len(self))
-            start_idx = max(0, idx - max_lookback + 1)
+            start_idx = max(0, idx - len(self) + 1)
             for i in range(start_idx, idx + 1):
                 if i < 0:
                     continue
@@ -245,16 +235,16 @@ class Triangle(Indicator):
                     'time': i
                 })
             
-            if len(bars) >= self.p.range:
+            if len(bars) >= self.p.min_range:
                 # Test for up triangle first
                 triangle = self._get_triangle_score(bars, flip=False)
                 
                 # If no up triangle, test for down triangle
-                if triangle is None or triangle['length'] < self.p.range:
+                if triangle is None or triangle['length'] < self.p.min_range:
                     triangle = self._get_triangle_score(bars, flip=True)
                 
                 # If valid triangle found
-                if triangle is not None and triangle['length'] >= self.p.range:
+                if triangle is not None and triangle['length'] >= self.p.min_range:
                     # Score is negative for down triangles, positive for up triangles
                     if triangle['direction'] == 'short':
                         score = -float(triangle['length'])

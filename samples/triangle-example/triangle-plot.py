@@ -27,14 +27,13 @@ class TriangleStrategy(bt.Strategy):
 
     def __init__(self):
         # Add Triangle indicator with default parameters
-        self.triangle = btind.Triangle(self.data)
+        self.triangle = btind.SquareTriangle(self.data)
 
         # Print triangle parameters for reference
         print(f"Triangle Parameters:")
-        print(f"  thresh: {self.triangle.params.thresh}")
-        print(f"  range: {self.triangle.params.range}")
+        print(f"  max_extra_area_ratio: {self.triangle.params.max_extra_area_ratio}")
+        print(f"  min_range: {self.triangle.params.min_range}")
         print(f"  flat_pct: {self.triangle.params.flat_pct}")
-        print(f"  lookback: {self.triangle.params.lookback}")
 
     def next(self):
         # Optional: Print triangle signals when detected

@@ -39,7 +39,7 @@ class TriangleStrategy(bt.Strategy):
     
     def __init__(self):
         # Initialize the Triangle indicator
-        self.triangle = bt.indicators.Triangle(
+        self.triangle = bt.indicators.SquareTriangle(
             self.data,
             thresh=self.params.thresh,
             range=self.params.range,
