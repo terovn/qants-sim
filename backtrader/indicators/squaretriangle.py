@@ -56,8 +56,8 @@ class SquareTriangle(Indicator):
     
     plotlines = dict(
         score=dict(color='orange', linewidth=2, _plotskip=False),
-        up=dict(marker='o', markersize=8, color='green', fillstyle='full', ls='', _plotskip=False),
-        down=dict(marker='o', markersize=8, color='red', fillstyle='full', ls='', _plotskip=False),
+        up=dict(marker='o', markersize=8, color='green', fillstyle='none', ls='', _plotskip=False),
+        down=dict(marker='o', markersize=8, color='red', fillstyle='none', ls='', _plotskip=False),
     )
     
     def __init__(self):
@@ -238,9 +238,11 @@ class SquareTriangle(Indicator):
                     # Score is negative for down triangles, positive for up triangles
                     if triangle['direction'] == 'short':
                         score = -float(triangle['length'])
-                        self.lines.down[0] = min([b['low'] for b in bars])
+                        # down line records the lowest price in the triangle
+                        self.lines.down[0] = min([b['low'] for b in bars[-triangle['length']:]])
                     else:
                         score = float(triangle['length'])
-                        self.lines.up[0] = max([b['high'] for b in bars])
+                        # up line records the highest price in the triangle
+                        self.lines.up[0] = max([b['high'] for b in bars[-triangle['length']:]])
                         
                     self.lines.score[0] = score
