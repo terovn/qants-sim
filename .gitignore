@@ -70,3 +70,5 @@ datas/*.py
 
 .idea/
 .claude/
+claude/
+.gitignore
