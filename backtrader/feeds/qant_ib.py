@@ -25,7 +25,35 @@ class QantIBPriceVolData(GenericCSVData):
         else:
             self.p.dtformat = '%Y-%m-%d %H:%M:%S%z'
 
+        # if provided dataname is a dir, use the latest data file in it
+        if os.path.isdir(self.p.dataname):
+            self.p.dataname = _find_latest_file(self.p.dataname)
+
         super(QantIBPriceVolData, self).start()
+
+def _find_latest_file(dirpath):
+    # Find all files in the ticker directory
+    files = glob.glob(os.path.join(dirpath, "*"))
+    files = [f for f in files if os.path.isfile(f)]
+
+    if not files:
+        raise RuntimeError(f"No files found in data dir {dirpath}")
+
+    # Find the file with biggest timestamp (last token in filename without extension when splitting by _)
+    latest_file = None
+    max_timestamp = ""
+
+    for file_path in files:
+        filename = os.path.basename(file_path)
+        name_without_ext = os.path.splitext(filename)[0]
+        tokens = name_without_ext.split('_')
+
+        timestamp = tokens[-1]
+        if timestamp > max_timestamp:
+            max_timestamp = timestamp
+            latest_file = file_path
+
+    return latest_file
 
 def load_qant_ib(data_root, universe_uri, cerebro, **kwargs):
     """
@@ -59,33 +87,8 @@ def load_qant_ib(data_root, universe_uri, cerebro, **kwargs):
         if not os.path.exists(ticker_dir):
             print(f"Warning: Directory not found for ticker {ticker}: {ticker_dir}")
             continue
-        
-        # Find all files in the ticker directory
-        files = glob.glob(os.path.join(ticker_dir, "*"))
-        files = [f for f in files if os.path.isfile(f)]
-        
-        if not files:
-            print(f"Warning: No files found for ticker {ticker} in {ticker_dir}")
-            continue
-        
-        # Find the file with biggest timestamp (last token in filename without extension when splitting by _)
-        latest_file = None
-        max_timestamp = ""
-        
-        for file_path in files:
-            filename = os.path.basename(file_path)
-            name_without_ext = os.path.splitext(filename)[0]
-            tokens = name_without_ext.split('_')
-            
-            if len(tokens) > 1:
-                timestamp = tokens[-1]
-                if timestamp > max_timestamp:
-                    max_timestamp = timestamp
-                    latest_file = file_path
-        
-        if latest_file is None:
-            print(f"Warning: No valid timestamped files found for ticker {ticker}")
-            continue
+
+        latest_file = _find_latest_file(ticker_dir)
         
         # Load it using QantIBPriceVolData, passing the specified **kwargs
         try:
