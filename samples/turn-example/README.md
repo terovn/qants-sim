@@ -122,7 +122,7 @@ class MyStrategy(bt.Strategy):
 
 The turn-plot.py script expects TSV data files in the qAnts format:
 - Compressed .gz files organized in ticker subdirectories
-- QantIBDailyPriceVolData format with OHLCV data
+- QantIBPriceVolData format with OHLCV data
 - Date/time stamps for proper time series analysis
 
 ## Notes

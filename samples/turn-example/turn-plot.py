@@ -3,7 +3,7 @@
 """
 Turn Indicator Sample Script
 
-This script loads price data from TSV files using QantIBDailyPriceVolData
+This script loads price data from TSV files using QantIBPriceVolData
 and plots the Turn indicator with custom visualization:
 - Green circles for peak turns
 - Red circles for trough turns
@@ -16,7 +16,7 @@ import math
 import os
 import glob
 import backtrader as bt
-from backtrader.feeds.qant_ib import QantIBDailyPriceVolData
+from backtrader.feeds.qant_ib import QantIBPriceVolData
 import backtrader.indicators as btind
 
 
@@ -192,9 +192,9 @@ def runstrategy():
         data_path = args.data
         ticker_name = os.path.basename(data_path).split('_')[-2] if '_' in os.path.basename(data_path) else 'DATA'
 
-    # Load data using QantIBDailyPriceVolData
+    # Load data using QantIBPriceVolData
     try:
-        data = QantIBDailyPriceVolData(
+        data = QantIBPriceVolData(
             dataname=data_path,
             fromdate=fromdate,
             todate=todate,
