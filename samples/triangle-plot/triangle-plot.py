@@ -3,7 +3,7 @@
 """
 Triangle Indicator Sample Script
 
-This script loads AAPL price data from a TSV file using QantIBDailyPriceVolData
+This script loads AAPL price data from a TSV file using QantIBPriceVolData
 and plots the Triangle indicator with custom visualization:
 - Green circles for up triangles 
 - Red circles for down triangles
@@ -16,7 +16,7 @@ import math
 import os
 import glob
 import backtrader as bt
-from backtrader.feeds.qant_ib import QantIBDailyPriceVolData
+from backtrader.feeds.qant_ib import QantIBPriceVolData
 import backtrader.indicators as btind
 
 
@@ -93,8 +93,8 @@ def runstrategy():
         data_path = args.data
         ticker_name = os.path.basename(data_path).split('_')[-2] if '_' in os.path.basename(data_path) else 'DATA'
     
-    # Load data using QantIBDailyPriceVolData
-    data = QantIBDailyPriceVolData(
+    # Load data using QantIBPriceVolData
+    data = QantIBPriceVolData(
         dataname=data_path,
         fromdate=fromdate,
         todate=todate,
