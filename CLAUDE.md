@@ -148,3 +148,7 @@ Each indicator test (`test_ind_*.py`) validates calculations against expected va
 - Python 3.2+ support
 - Current version follows X.Y.Z.I format where I = number of built-in indicators
 - Uses semantic versioning for compatibility
+
+## Important Notes
+
+- In backtrader, lines follow a different index scheme, with [0] pointing to the current value, [-1] the last value before that, and [-2] the value before [-1], etc...

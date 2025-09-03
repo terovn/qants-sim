@@ -14,12 +14,11 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 from . import Indicator
-import math
 
 
-class Triangle(Indicator):
+class SquareTriangle(Indicator):
     '''
-    Triangle Pattern Detector
+    Triangle Pattern Detector - based on StudyTriangle2 from qants-trader Java.
     
     Detects triangle consolidation patterns in price data by analyzing
     the overlap between actual price action and a perfect triangle shape.
@@ -28,10 +27,9 @@ class Triangle(Indicator):
     Down Triangle: Flat lows with progressively lower highs
     
     Parameters:
-    - thresh: Maximum allowed ratio of non-overlapping area (default 0.2)
-    - range: Minimum bars needed for valid triangle (default 3)  
-    - flat_pct: Maximum percentage difference for flat tops/bottoms (default 0.2)
-    - lookback: Number of bars to analyze (default 20)
+    - max_area_diff_ratio: Maximum allowed ratio of non-overlapping area
+    - min_range: Minimum bars needed for valid triangle (default 3)
+    - flat_pct: Maximum percentage difference for flat tops/bottoms, 1 means 1%
     
     Outputs:
     - score: Triangle strength/length (positive for up triangles, negative for down triangles, 0 if none)
@@ -39,62 +37,93 @@ class Triangle(Indicator):
     - down: Price level where down triangle detected (NaN otherwise)
     '''
     
-    alias = ('LongTri', 'Triangle2', 'LongTriangle2')
+    alias = ('Triangle',)
     
     lines = ('score', 'up', 'down')
     
     params = (
-        ('thresh', 0.2),      # max allowed ratio of non-overlapping area
-        ('range', 3),         # minimum bars for valid triangle
-        ('flat_pct', 0.2),    # max pct difference for flat tops/bottoms  
-        ('lookback', 20),     # number of bars to look back
+        ('max_area_diff_ratio', 0.2),      # max allowed ratio of non-overlapping area
+        ('min_range', 3),     # minimum bars for valid triangle
+        ('flat_pct', 0.4),    # max percentage difference for flat tops/bottoms, 1 means 1%
     )
     
     plotinfo = dict(
         plot=True,
         plothlines=[0.0],
         plotabove=False,
+        subplot=True,
     )
     
     plotlines = dict(
-        score=dict(color='blue'),
-        up=dict(marker='o', markersize=8, color='green', fillstyle='full', ls=''),
-        down=dict(marker='o', markersize=8, color='red', fillstyle='full', ls=''),
+        score=dict(color='orange', linewidth=2, _plotskip=False),
+        up=dict(marker='o', markersize=8, color='green', fillstyle='none', ls='', _plotskip=False),
+        down=dict(marker='o', markersize=8, color='red', fillstyle='none', ls='', _plotskip=False),
     )
     
     def __init__(self):
-        super(Triangle, self).__init__()
-        # Set minimum period
-        self.addminperiod(max(self.p.range, self.p.lookback))
+        super(SquareTriangle, self).__init__()
+        # Set minimum period - only need 'range' bars for triangle detection
+        self.addminperiod(self.p.min_range)
         
         # Set plotmaster to display underlying data as candlesticks
         self.plotinfo.plotmaster = self.data
     
     
+    
     def _get_triangle_score(self, bars, flip=False):
         """
-        Calculate triangle score for given bars
+        Calculate triangle score for given bars, testing progressively longer ranges
+        to find the longest valid triangle pattern.
         
         Args:
             bars: List of OHLC bars to analyze
             flip: If True, analyze as down triangle (flip high/low)
             
         Returns:
-            dict with keys: direction, length, entry_price, ex_pct
+            dict with keys: direction, length, ex_pct
         """
-        if len(bars) < self.p.range:
+        if len(bars) < self.p.min_range:
+            return None
+        
+        best_result = None
+        
+        # Test progressively longer ranges, starting from minimum range
+        for test_range in range(self.p.min_range, len(bars) + 1):
+            result = self._test_triangle_range(bars, test_range, flip)
+            
+            # If this range produces a valid triangle, keep it as best
+            if result is not None and result['length'] >= test_range:
+                best_result = result
+            else:
+                # If this range fails, stop extending (no longer ranges will work)
+                break
+        
+        return best_result
+    
+    def _test_triangle_range(self, bars, test_range, flip=False):
+        """
+        Test triangle pattern for a specific range length
+        
+        Args:
+            bars: List of OHLC bars to analyze
+            test_range: Number of bars from end to use as triangle base
+            flip: If True, analyze as down triangle (flip high/low)
+            
+        Returns:
+            dict with triangle result or None if invalid
+        """
+        if len(bars) < test_range:
             return None
             
         result = {
             'direction': 'short' if flip else 'long',
             'length': 0,
-            'entry_price': float('-inf') if not flip else float('inf'),
             'ex_pct': 0
         }
         
         # Get start and end bars for triangle base
         bar_end = bars[-1]
-        bar_start = bars[-(self.p.range)]
+        bar_start = bars[-test_range]
         
         if flip:
             # For down triangle, flip around x-axis (negate values and swap high/low)
@@ -109,12 +138,12 @@ class Triangle(Indicator):
             high_start = float(bar_start['high'])
             low_start = float(bar_start['low'])
         
-        # Test triangle conditions
+        # Test triangle conditions (initial flatness check)
         flat_diff_pct = abs((high_end - high_start) * 100.0 / high_start) if high_start != 0 else float('inf')
         
         # Up triangle: flat highs + higher lows
         # Down triangle: flat lows + lower highs (after flip)
-        if (flat_diff_pct <= self.p.flat_pct and 
+        if (flat_diff_pct <= self.p.flat_pct and
             low_end > low_start and 
             low_end < high_start):
             
@@ -122,9 +151,8 @@ class Triangle(Indicator):
             area_total = high_end - low_end
             next_bar_low = low_end
             
-            # Analyze bars from newest to oldest
-            max_bars = min(self.p.range * 2, len(bars))
-            for i in range(max_bars):
+            # Analyze bars from newest to oldest (only test up to test_range bars)
+            for i in range(test_range):
                 if i >= len(bars):
                     break
                     
@@ -149,7 +177,7 @@ class Triangle(Indicator):
                     break
                 
                 # Calculate perfect triangle low at this position
-                per_low = low_end - (low_end - low_start) * i / (self.p.range - 1)
+                per_low = low_end - (low_end - low_start) * i / (test_range - 1)
                 thres = high_end - per_low
                 
                 # Calculate deviations from perfect triangle
@@ -160,49 +188,34 @@ class Triangle(Indicator):
                 area_total += thres
                 
                 # Check if deviation exceeds threshold
-                if area_total > 0 and ex_total / area_total > self.p.thresh:
+                if area_total > 0 and ex_total / area_total > self.p.max_area_diff_ratio:
                     break
                 
                 # Update result
                 result['ex_pct'] = ex_total / area_total if area_total > 0 else 0
-                if flip:
-                    # For flipped data, we want the minimum (which corresponds to max in original)
-                    result['entry_price'] = min(result['entry_price'], bi_high)
-                else:
-                    result['entry_price'] = max(result['entry_price'], bi_high)
                 result['length'] += 1
-        
-        # Fix entry price for flipped data
-        if flip and result['length'] >= self.p.range:
-            result['entry_price'] = -result['entry_price']
-        
-        return result if result['length'] >= self.p.range else None
+
+        return result if result['length'] >= test_range else None
     
     def next(self):
+        # Need enough data - only require range bars for triangle detection
+        if len(self) < self.p.min_range:
+            return
+            
         # Initialize outputs
         self.lines.score[0] = 0.0
         self.lines.up[0] = float('nan')
         self.lines.down[0] = float('nan')
+
+        # Look for triangles that end at the current bar (triangle completion detection)
+        # This ensures each triangle pattern is detected exactly once - on the completion day
+        idx = len(self) - 1  # Look at pattern ending at current bar
         
-        # Need enough data
-        if len(self) < max(self.p.range, self.p.lookback):
-            return
-        
-        # Debug: print current bar info
-        #print(f"Triangle next(): len={len(self)}, high={self.data.high[0]}, low={self.data.low[0]}")
-            
-        # Get bars for analysis - scan from current position backwards
-        lookback_bars = min(self.p.lookback, len(self))
-        start_idx = max(0, len(self) - lookback_bars)
-        
-        # Analyze each position within lookback window
-        for idx in range(len(self) - 1, start_idx + self.p.range - 2, -1):
-            if idx < self.p.range - 1:
-                continue
-                
+        if idx >= self.p.min_range - 1:
             # Get bars for this analysis window
             bars = []
-            for i in range(idx - self.p.range + 1, idx + 1):
+            start_idx = max(0, idx - len(self) + 1)
+            for i in range(start_idx, idx + 1):
                 if i < 0:
                     continue
                 ago_offset = len(self) - 1 - i
@@ -212,27 +225,24 @@ class Triangle(Indicator):
                     'time': i
                 })
             
-            if len(bars) < self.p.range:
-                continue
+            if len(bars) >= self.p.min_range:
+                # Test for up triangle first
+                triangle = self._get_triangle_score(bars, flip=False)
                 
-            # Test for up triangle first
-            triangle = self._get_triangle_score(bars, flip=False)
-            
-            # If no up triangle, test for down triangle
-            if triangle is None or triangle['length'] < self.p.range:
-                triangle = self._get_triangle_score(bars, flip=True)
-            
-            # If valid triangle found
-            if triangle is not None and triangle['length'] >= self.p.range:
-                # Score is negative for down triangles, positive for up triangles
-                if triangle['direction'] == 'short':
-                    score = -float(triangle['length'])
-                    self.lines.down[0] = float(bars[-1]['low'])
-                else:
-                    score = float(triangle['length'])
-                    self.lines.up[0] = float(bars[-1]['high'])
-                    
-                self.lines.score[0] = score
+                # If no up triangle, test for down triangle
+                if triangle is None or triangle['length'] < self.p.min_range:
+                    triangle = self._get_triangle_score(bars, flip=True)
                 
-                # Skip ahead to avoid overlapping detections
-                break
+                # If valid triangle found
+                if triangle is not None and triangle['length'] >= self.p.min_range:
+                    # Score is negative for down triangles, positive for up triangles
+                    if triangle['direction'] == 'short':
+                        score = -float(triangle['length'])
+                        # down line records the lowest price in the triangle
+                        self.lines.down[0] = min([b['low'] for b in bars[-triangle['length']:]])
+                    else:
+                        score = float(triangle['length'])
+                        # up line records the highest price in the triangle
+                        self.lines.up[0] = max([b['high'] for b in bars[-triangle['length']:]])
+                        
+                    self.lines.score[0] = score
