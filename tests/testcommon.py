@@ -234,4 +234,4 @@ class SampleParamsHolder(ParamsBase):
     )
 
     def __init__(self):
-        self.min_range = factorial(10)
+        self.range = factorial(10)
