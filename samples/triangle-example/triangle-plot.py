@@ -27,7 +27,7 @@ class TriangleStrategy(bt.Strategy):
     
     def __init__(self):
         # Add Triangle indicator with default parameters
-        self.triangle = btind.Triangle(self.data)
+        self.triangle = btind.SquareTriangle(self.data)
         
         # Print triangle parameters for reference
         print(f"Triangle Parameters:")
