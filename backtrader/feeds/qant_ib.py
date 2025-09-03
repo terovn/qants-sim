@@ -1,40 +1,3 @@
-<<<<<<< HEAD
-from .csvgeneric import GenericCSVData
-
-class QantIBPriceVolData(GenericCSVData):
-    params = (
-        ('nullvalue', float('NaN')),
-        ('dtformat', '%Y-%m-%d %H:%M:%S%z'),
-        ('tmformat', '%H:%M:%S'),
-        ('separator', '\t'),
-
-        ('datetime', 0),
-        ('time', -1),
-        ('open', 1),
-        ('high', 2),
-        ('low', 3),
-        ('close', 4),
-        ('volume', 5),
-        ('openinterest', -1),
-    )
-
-class QantIBDailyPriceVolData(GenericCSVData):
-    params = (
-        ('nullvalue', float('NaN')),
-        ('dtformat', '%Y-%m-%d'),
-        ('tmformat', '%H:%M:%S'),
-        ('separator', '\t'),
-
-        ('datetime', 0),
-        ('time', -1),
-        ('open', 1),
-        ('high', 2),
-        ('low', 3),
-        ('close', 4),
-        ('volume', 5),
-        ('openinterest', -1),
-    )
-=======
 from .csvgeneric import GenericCSVData
 import backtrader as bt
 import os
@@ -139,4 +102,3 @@ def load_qant_ib(data_root, universe_uri, cerebro, **kwargs):
     
     print(f"Successfully loaded {loaded_count} out of {len(tickers)} tickers")
     return loaded_count
->>>>>>> origin/master
