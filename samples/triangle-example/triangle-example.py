@@ -24,10 +24,9 @@ class TriangleStrategy(bt.Strategy):
     '''
     
     params = (
-        ('thresh', 0.2),      # Triangle detection threshold
-        ('range', 3),         # Minimum bars for triangle
+        ('max_area_diff_ratio', 0.2),      # Triangle detection threshold
+        ('min_range', 3),         # Minimum bars for triangle
         ('flat_pct', 0.2),    # Flatness percentage
-        ('lookback', 20),     # Lookback period
         ('printlog', True),   # Print log messages
     )
     
@@ -41,10 +40,9 @@ class TriangleStrategy(bt.Strategy):
         # Initialize the Triangle indicator
         self.triangle = bt.indicators.SquareTriangle(
             self.data,
-            thresh=self.params.thresh,
-            range=self.params.range,
-            flat_pct=self.params.flat_pct,
-            lookback=self.params.lookback
+            max_area_diff_ratio=self.params.max_area_diff_ratio,
+            min_range=self.params.min_range,
+            flat_pct=self.params.flat_pct
         )
         
         # For tracking positions
@@ -127,10 +125,9 @@ def run_triangle_example(args=None):
     # Add strategy
     cerebro.addstrategy(
         TriangleStrategy,
-        thresh=args.thresh,
-        range=args.range,
+        max_area_diff_ratio=args.max_area_diff_ratio,
+        min_range=args.min_range,
         flat_pct=args.flat_pct,
-        lookback=args.lookback,
         printlog=args.printlog
     )
     
@@ -176,18 +173,15 @@ def parse_args(pargs=None):
     parser.add_argument('--cash', default=100000, type=float,
                         help='Starting cash')
     
-    parser.add_argument('--thresh', default=0.2, type=float,
+    parser.add_argument('--max_area_diff_ratio', default=0.2, type=float,
                         help='Triangle detection threshold')
     
-    parser.add_argument('--range', default=3, type=int,
+    parser.add_argument('--min_range', default=3, type=int,
                         help='Minimum bars for triangle')
     
     parser.add_argument('--flat-pct', default=0.2, type=float,
                         help='Flatness percentage')
-    
-    parser.add_argument('--lookback', default=20, type=int,
-                        help='Lookback period')
-    
+
     parser.add_argument('--plot', action='store_true',
                         help='Plot the results')
     
