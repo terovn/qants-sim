@@ -31,10 +31,9 @@ class TriangleStrategy(bt.Strategy):
         
         # Print triangle parameters for reference
         print(f"Triangle Parameters:")
-        print(f"  thresh: {self.triangle.params.thresh}")
-        print(f"  range: {self.triangle.params.range}")
+        print(f"  max_area_diff_ratio: {self.triangle.params.max_area_diff_ratio}")
+        print(f"  min_range: {self.triangle.params.min_range}")
         print(f"  flat_pct: {self.triangle.params.flat_pct}")
-        print(f"  lookback: {self.triangle.params.lookback}")
         
     def next(self):
         # Optional: Print triangle signals when detected
@@ -74,6 +73,7 @@ def runstrategy():
     # Create cerebro engine
     cerebro = bt.Cerebro()
     
+
     # Parse date range if provided
     fromdate = None
     todate = None
