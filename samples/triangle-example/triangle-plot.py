@@ -73,7 +73,8 @@ def runstrategy():
     # Create cerebro engine
     cerebro = bt.Cerebro()
     
-    # Parse date min_range if provided
+
+    # Parse date range if provided
     fromdate = None
     todate = None
     if args.fromdate:
